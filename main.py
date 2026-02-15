@@ -6,7 +6,7 @@ from gatet import Tele
 import os
 
 CHANNEL_ID = -1003645329000
-TOKEN = '8567829043:AAEZSRZEWmwoBCfCIHqBPxzMXw-ji7y_rak'
+TOKEN = '8535661885:AAG5PcG6TiMJWeLZptN3dTN-bUaWScE9D1A'
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 
