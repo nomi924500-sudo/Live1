@@ -6,8 +6,23 @@ from gatet import Tele
 import os
 
 CHANNEL_ID = -1003645329000
-token = '8567829043:AAEZSRZEWmwoBCfCIHqBPxzMXw-ji7y_rak'
-bot = telebot.TeleBot(token, parse_mode="HTML")
+TOKEN = '8567829043:AAEZSRZEWmwoBCfCIHqBPxzMXw-ji7y_rak'
+bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+
+
+# ✅ Function to split long messages for Telegram
+def send_long_message(bot, chat_id, text, message_id=None, reply_markup=None):
+    max_length = 4096
+    for i in range(0, len(text), max_length):
+        if message_id:
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=text[i:i+max_length],
+                reply_markup=reply_markup
+            )
+        else:
+            bot.send_message(chat_id, text[i:i+max_length])
 
 
 @bot.message_handler(commands=["start"])
@@ -45,10 +60,10 @@ def main(message):
         for cc in lino:
 
             if os.path.exists("stop.stop"):
-                bot.edit_message_text(
-                    chat_id=message.chat.id,
-                    message_id=ko,
-                    text='🛑 STOP ✅\nBOT BY ➜ @buik100'
+                send_long_message(
+                    bot, message.chat.id,
+                    '🛑 STOP ✅\nBOT BY ➜ @buik100',
+                    message_id=ko
                 )
                 os.remove("stop.stop")
                 return
@@ -103,12 +118,8 @@ def main(message):
             stop_btn = types.InlineKeyboardButton("🛑 STOP", callback_data="stop")
             mes.add(stop_btn)
 
-            bot.edit_message_text(
-                chat_id=message.chat.id,
-                message_id=ko,
-                text=UI_PROCESSING,
-                reply_markup=mes
-            )
+            # ✅ Use function to auto split and send
+            send_long_message(bot, message.chat.id, UI_PROCESSING, message_id=ko, reply_markup=mes)
 
             msg = f"""
 <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b> — <b>Stripe Auth</b> ✅
@@ -156,10 +167,10 @@ by @Mydev1
     except Exception as e:
         print(e)
 
-    bot.edit_message_text(
-        chat_id=message.chat.id,
-        message_id=ko,
-        text='✅ CHECKED\nBOT BY ➜ @buik100'
+    send_long_message(
+        bot, message.chat.id,
+        '✅ CHECKED\nBOT BY ➜ @buik100',
+        message_id=ko
     )
 
 
