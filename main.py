@@ -153,7 +153,7 @@ def chk_handler(message):
         except:
             pass
 
-        time.sleep(30)
+        time.sleep(10)
 
     # Final display
     final_display = header
